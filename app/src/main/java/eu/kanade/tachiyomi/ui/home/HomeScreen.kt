@@ -35,6 +35,7 @@ import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
+import eu.kanade.tachiyomi.ui.foryou.ForYouTab
 import eu.kanade.tachiyomi.ui.history.HistoryTab
 import eu.kanade.tachiyomi.ui.library.LibraryTab
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
@@ -65,8 +66,8 @@ object HomeScreen : Screen() {
 
     private val TABS = listOf(
         LibraryTab,
+        ForYouTab,
         UpdatesTab,
-        HistoryTab,
         BrowseTab,
         MoreTab,
     )
@@ -142,6 +143,7 @@ object HomeScreen : Screen() {
                     openTabEvent.receiveAsFlow().collectLatest {
                         tabNavigator.current = when (it) {
                             is Tab.Library -> LibraryTab
+                            Tab.ForYou -> ForYouTab
                             Tab.Updates -> UpdatesTab
                             Tab.History -> HistoryTab
                             is Tab.Browse -> {
@@ -268,6 +270,7 @@ object HomeScreen : Screen() {
 
     sealed interface Tab {
         data class Library(val mangaIdToOpen: Long? = null) : Tab
+        data object ForYou : Tab
         data object Updates : Tab
         data object History : Tab
         data class Browse(val toExtensions: Boolean = false) : Tab

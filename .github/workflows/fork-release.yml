@@ -1,0 +1,59 @@
+name: Fork Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for release (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_release:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version-file: .github/.java-version
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Standard & Arm64 APKs
+        run: ./gradlew assembleStandardRelease -Pdist=ci || ./gradlew assembleRelease -Pdist=ci
+
+      - name: Find Built APKs
+        id: find_apks
+        run: |
+          mkdir -p release_apks
+          find app/build/outputs/apk -name "*.apk" -exec cp {} release_apks/ \;
+          ls -la release_apks/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          name: "Mihon For You ${{ github.event.inputs.tag_name || github.ref_name }}"
+          body: |
+            ### Mihon Fork with Native "For You" Recommendation Engine
+            - Embedded "For You" tab powered by MangaBaka & AniList.
+            - Reading taste learning directly from local Mihon database.
+            - Automatic in-app updates supported.
+          files: release_apks/*.apk
+          draft: false
+          prerelease: false
