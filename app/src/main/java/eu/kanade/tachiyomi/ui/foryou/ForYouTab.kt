@@ -19,7 +19,7 @@ data object ForYouTab : Tab {
         get() = TabOptions(
             index = 1u,
             title = "For You",
-            icon = painterResource(R.drawable.sc_explore_48dp),
+            icon = painterResource(R.drawable.ic_for_you_24dp),
         )
 
     @Composable
