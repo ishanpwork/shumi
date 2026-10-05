@@ -37,11 +37,19 @@ jobs:
       - name: Build Standard & Arm64 APKs
         run: ./gradlew assembleRelease -Pdist=ci
 
-      - name: Find Built APKs
+      - name: Rename and Package APKs
         id: find_apks
         run: |
+          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
           mkdir -p release_apks
-          find app/build/outputs/apk -name "*.apk" -exec cp {} release_apks/ \;
+          APK_DIR="app/build/outputs/apk/release"
+
+          [ -f "$APK_DIR/app-universal-release.apk" ] && cp "$APK_DIR/app-universal-release.apk" "release_apks/shumi-${TAG}.apk"
+          [ -f "$APK_DIR/app-arm64-v8a-release.apk" ] && cp "$APK_DIR/app-arm64-v8a-release.apk" "release_apks/shumi-arm64-v8a-${TAG}.apk"
+          [ -f "$APK_DIR/app-armeabi-v7a-release.apk" ] && cp "$APK_DIR/app-armeabi-v7a-release.apk" "release_apks/shumi-armeabi-v7a-${TAG}.apk"
+          [ -f "$APK_DIR/app-x86-release.apk" ] && cp "$APK_DIR/app-x86-release.apk" "release_apks/shumi-x86-${TAG}.apk"
+          [ -f "$APK_DIR/app-x86_64-release.apk" ] && cp "$APK_DIR/app-x86_64-release.apk" "release_apks/shumi-x86_64-${TAG}.apk"
+
           ls -la release_apks/
 
       - name: Create GitHub Release
