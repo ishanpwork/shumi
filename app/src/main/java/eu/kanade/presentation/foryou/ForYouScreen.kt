@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Refresh
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -52,7 +52,7 @@ fun ForYouScreen(
                 actions = {
                     IconButton(onClick = onRefresh) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
+                            imageVector = MaterialSymbols.rounded.Refresh,
                             contentDescription = "Refresh Recommendations",
                         )
                     }

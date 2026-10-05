@@ -35,7 +35,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build Standard & Arm64 APKs
-        run: ./gradlew assembleStandardRelease -Pdist=ci || ./gradlew assembleRelease -Pdist=ci
+        run: ./gradlew assembleRelease -Pdist=ci
 
       - name: Find Built APKs
         id: find_apks
