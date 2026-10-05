@@ -16,4 +16,5 @@ data class Recommendation(
     val externalUrl: String? = null,
     val provider: String = "MangaBaka",
     val isInLibrary: Boolean = false,
+    val seedMangaTitle: String? = null,
 )

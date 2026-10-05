@@ -19,11 +19,15 @@ data class ForYouState(
             recommendations
         } else {
             recommendations.filter { rec ->
-                rec.primaryMatchingTags.any { it.equals(selectedTagFilter, ignoreCase = true) } ||
+                rec.seedMangaTitle?.equals(selectedTagFilter, ignoreCase = true) == true ||
+                    rec.primaryMatchingTags.any { it.equals(selectedTagFilter, ignoreCase = true) } ||
                     rec.allTags.any { it.equals(selectedTagFilter, ignoreCase = true) }
             }
         }
 
+    val availableSeeds: List<String>
+        get() = recommendations.mapNotNull { it.seedMangaTitle }.distinct().take(6)
+
     val availableTags: List<String>
-        get() = recommendations.flatMap { it.primaryMatchingTags }.distinct().take(10)
+        get() = recommendations.flatMap { it.primaryMatchingTags }.distinct().take(8)
 }

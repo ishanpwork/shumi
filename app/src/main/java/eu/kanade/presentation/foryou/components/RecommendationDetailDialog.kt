@@ -116,6 +116,16 @@ fun RecommendationDetailDialog(
                             fontWeight = FontWeight.Bold,
                         )
 
+                        if (!recommendation.seedMangaTitle.isNullOrBlank()) {
+                            Text(
+                                text = "✨ Based on your reading of ${recommendation.seedMangaTitle}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(4.dp))
 
                         // Match Score

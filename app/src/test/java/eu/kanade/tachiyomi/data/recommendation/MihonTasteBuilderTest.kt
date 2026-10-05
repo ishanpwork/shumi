@@ -66,5 +66,6 @@ class MihonTasteBuilderTest {
         // Abandoned tags should have negligible / zero weight
         (profile.tagWeights["Isekai"] ?: 0.0) shouldBe 0.0
         profile.topTags.contains("System") shouldBe true
+        profile.topFavoriteTitles.contains("Solo Leveling") shouldBe true
     }
 }

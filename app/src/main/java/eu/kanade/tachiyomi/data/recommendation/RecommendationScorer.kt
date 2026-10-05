@@ -52,16 +52,20 @@ class RecommendationScorer {
             else -> 0.5
         }
 
-        // Breadth bonus for multiple strong trope matches (20% weight)
+        // Breadth bonus for multiple strong trope matches (15% weight)
         val matchBreadthScore = (matchedSignificantTags.size / 4.0).coerceIn(0.0, 1.0)
 
-        // Combined deterministic score
-        val rawFinalScore = (tagScore * 0.45) +
-            (normalizedRating * 0.20) +
-            (chapterScore * 0.15) +
-            (matchBreadthScore * 0.20)
+        // Seed title boost (+25% when directly recommended from a user's favorite/completed manga)
+        val seedBoost = if (!candidate.seedTitle.isNullOrBlank()) 0.25 else 0.0
 
-        val finalScore = rawFinalScore.coerceIn(0.20, 0.98)
+        // Combined deterministic score
+        val rawFinalScore = (tagScore * 0.35) +
+            (normalizedRating * 0.25) +
+            (chapterScore * 0.10) +
+            (matchBreadthScore * 0.15) +
+            seedBoost
+
+        val finalScore = rawFinalScore.coerceIn(0.20, 0.99)
         val matchPct = (finalScore * 100).toInt()
 
         // Generate explainability reasons
@@ -71,10 +75,13 @@ class RecommendationScorer {
             .take(3)
 
         val reasons = mutableListOf<String>()
+        if (!candidate.seedTitle.isNullOrBlank()) {
+            reasons.add("Community-voted top recommendation for readers of ${candidate.seedTitle}.")
+        }
         if (topMatchedTags.isNotEmpty()) {
             reasons.add("Matches your reading preference for ${topMatchedTags.joinToString(", ")}.")
-        } else {
-            reasons.add("Trending discovery popular among manhwa readers.")
+        } else if (candidate.seedTitle.isNullOrBlank()) {
+            reasons.add("Highly rated discovery matching trending reader favorites.")
         }
 
         candidate.rating?.let { r ->
@@ -105,6 +112,7 @@ class RecommendationScorer {
             externalUrl = candidate.externalUrl,
             provider = candidate.provider,
             isInLibrary = inLibrary,
+            seedMangaTitle = candidate.seedTitle,
         )
     }
 }

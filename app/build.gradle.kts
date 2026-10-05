@@ -37,8 +37,8 @@ android {
     defaultConfig {
         applicationId = "app.mihon.shumi"
 
-        versionCode = 38
-        versionName = "0.22.1"
+        versionCode = 39
+        versionName = "0.22.2"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")

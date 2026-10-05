@@ -7,6 +7,7 @@ data class TasteProfile(
     val genreWeights: Map<String, Double> = emptyMap(),
     val authorWeights: Map<String, Double> = emptyMap(),
     val topTags: List<String> = emptyList(),
+    val topFavoriteTitles: List<String> = emptyList(),
     val completedMangaTitles: Set<String> = emptySet(),
     val libraryMangaTitles: Set<String> = emptySet(),
     val dislikedMangaTitles: Set<String> = emptySet(),

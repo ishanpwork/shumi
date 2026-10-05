@@ -94,11 +94,36 @@ class MihonTasteBuilder(
             .map { it.key }
             .take(15)
 
+        // Identify user's top engaged and loved titles to seed collaborative recommendations
+        val topFavoriteTitles = library
+            .map { item ->
+                val manga = item.manga
+                val total = item.totalChapters.coerceAtLeast(0)
+                val read = item.readCount.coerceAtLeast(0)
+                val completionRatio = if (total > 0) read.toDouble() / total.toDouble() else 0.0
+
+                var engagementScore = 0.0
+                if (manga.favorite) engagementScore += 6.0
+                if (item.hasBookmarks) engagementScore += 4.0
+                engagementScore += completionRatio * 5.0
+                if (read >= 10) engagementScore += 3.0
+                if (read >= 30) engagementScore += 3.0
+
+                item to engagementScore
+            }
+            .filter { it.second > 1.0 }
+            .sortedByDescending { it.second }
+            .map { cleanTitleForSearch(it.first.manga.title) }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .take(6)
+
         return TasteProfile(
             tagWeights = normalizedTags,
             genreWeights = normalizedGenres,
             authorWeights = authorWeights,
             topTags = topTags,
+            topFavoriteTitles = topFavoriteTitles,
             completedMangaTitles = completedTitles,
             libraryMangaTitles = libraryTitles,
             dislikedMangaTitles = emptySet(),
@@ -109,5 +134,13 @@ class MihonTasteBuilder(
 
     private fun normalizeTitle(title: String): String {
         return title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+    }
+
+    fun cleanTitleForSearch(title: String): String {
+        return title
+            .replace(Regex("\\[.*?\\]"), "")
+            .replace(Regex("\\(.*?\\)"), "")
+            .replace(Regex("(?i)(season\\s*\\d+|chapter\\s*\\d+|ch\\.\\s*\\d+|webtoon|manhwa|manga|official|color|hd)"), "")
+            .trim()
     }
 }

@@ -108,6 +108,19 @@ fun RecommendationCard(
                 modifier = Modifier
                     .weight(1f),
             ) {
+                // Seed attribution badge
+                if (!recommendation.seedMangaTitle.isNullOrBlank()) {
+                    Text(
+                        text = "✨ Because you read ${recommendation.seedMangaTitle}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                }
+
                 // Title and Dismiss Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),

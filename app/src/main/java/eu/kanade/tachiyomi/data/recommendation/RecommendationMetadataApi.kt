@@ -33,8 +33,10 @@ data class CandidateManga(
     val rating: Double? = null,
     val genres: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
-    val provider: String = "MangaBaka",
+    val provider: String = "AniList",
     val externalUrl: String? = null,
+    val seedTitle: String? = null,
+    val countryOfOrigin: String? = null,
 )
 
 @Inject
@@ -48,9 +50,10 @@ class RecommendationMetadataApi(
     // Memory cache with timestamp
     private var cachedCandidates: List<CandidateManga> = emptyList()
     private var lastFetchTimestamp: Long = 0L
-    private val cacheDurationMs = 12 * 60 * 60 * 1000L // 12 hours
+    private val cacheDurationMs = 6 * 60 * 60 * 1000L // 6 hours
 
     suspend fun fetchCandidates(
+        favoriteTitles: List<String>,
         keywords: List<String>,
         forceRefresh: Boolean = false,
     ): List<CandidateManga> = withIOContext {
@@ -61,30 +64,48 @@ class RecommendationMetadataApi(
 
         val results = mutableMapOf<String, CandidateManga>()
 
-        // 1. Fetch from AniList Trending Korean manhwa
-        try {
-            val aniListCandidates = fetchAniListTrending()
-            aniListCandidates.forEach { candidate ->
-                results[candidate.title.lowercase().trim()] = candidate
-            }
-        } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "Failed to fetch AniList trending candidates" }
-        }
-
-        // 2. Fetch from MangaBaka for top user taste keywords
-        val searchKeywords = if (keywords.isNotEmpty()) keywords.take(4) else listOf("action", "fantasy", "regression", "system")
-        for (kw in searchKeywords) {
+        // 1. Fetch direct collaborative recommendations based on user's top-read/favorite titles
+        for (favTitle in favoriteTitles.take(5)) {
             try {
-                val bakaCandidates = fetchMangaBakaSearch(kw)
-                bakaCandidates.forEach { candidate ->
+                val seedRecs = fetchAniListRecommendationsForTitle(favTitle)
+                seedRecs.forEach { candidate ->
                     val key = candidate.title.lowercase().trim()
                     if (!results.containsKey(key)) {
                         results[key] = candidate
                     }
                 }
             } catch (e: Exception) {
-                logcat(LogPriority.WARN, e) { "Failed to search MangaBaka for keyword: $kw" }
+                logcat(LogPriority.WARN, e) { "Failed to fetch AniList recommendations for seed title: $favTitle" }
             }
+        }
+
+        // 2. Fetch top-rated & trending across user's top genres on AniList (Manga & Manhwa)
+        val searchGenres = if (keywords.isNotEmpty()) keywords.take(3) else emptyList()
+        if (searchGenres.isNotEmpty()) {
+            try {
+                val genreCandidates = fetchAniListByGenres(searchGenres)
+                genreCandidates.forEach { candidate ->
+                    val key = candidate.title.lowercase().trim()
+                    if (!results.containsKey(key)) {
+                        results[key] = candidate
+                    }
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN, e) { "Failed to fetch AniList genre candidates for: $searchGenres" }
+            }
+        }
+
+        // 3. Global trending & top-rated across all origins
+        try {
+            val trendingCandidates = fetchAniListTrending()
+            trendingCandidates.forEach { candidate ->
+                val key = candidate.title.lowercase().trim()
+                if (!results.containsKey(key)) {
+                    results[key] = candidate
+                }
+            }
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "Failed to fetch global trending AniList candidates" }
         }
 
         val allCandidates = results.values.toList()
@@ -100,83 +121,103 @@ class RecommendationMetadataApi(
         allCandidates
     }
 
-    private suspend fun fetchMangaBakaSearch(query: String): List<CandidateManga> {
-        val url = "https://api.mangabaka.org/v1/series/search?q=$query&type_not=novel"
-        val request = GET(url)
+    suspend fun fetchAniListRecommendationsForTitle(title: String): List<CandidateManga> {
+        val query = """
+            query (${'$'}search: String) {
+              Media(type: MANGA, search: ${'$'}search) {
+                id
+                title {
+                  english
+                  romaji
+                }
+                recommendations(sort: RATING_DESC, perPage: 8) {
+                  nodes {
+                    rating
+                    mediaRecommendation {
+                      id
+                      title {
+                        english
+                        romaji
+                      }
+                      description
+                      status
+                      chapters
+                      meanScore
+                      coverImage {
+                        large
+                      }
+                      genres
+                      tags {
+                        name
+                        rank
+                      }
+                      countryOfOrigin
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val jsonBody = """{"query": ${Json.encodeToString(kotlinx.serialization.serializer(), query)}, "variables": {"search": ${Json.encodeToString(kotlinx.serialization.serializer(), title)}}}"""
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val request = POST("https://graphql.anilist.co", body = jsonBody.toRequestBody(mediaType))
         val response = client.newCall(request).awaitSuccess()
         val bodyString = response.body?.string() ?: return emptyList()
 
         val parsed = json.parseToJsonElement(bodyString).jsonObject
-        val dataArray = parsed["data"]?.jsonArray ?: return emptyList()
+        val mediaObj = parsed["data"]?.jsonObject?.get("Media")?.jsonObject ?: return emptyList()
+        val recNodes = mediaObj["recommendations"]?.jsonObject?.get("nodes")?.jsonArray ?: return emptyList()
 
         val items = mutableListOf<CandidateManga>()
-        for (elem in dataArray) {
-            val obj = elem.jsonObject
-            val id = obj["id"]?.jsonPrimitive?.content ?: continue
-            val rating = obj["rating"]?.jsonPrimitive?.doubleOrNull
+        for (node in recNodes) {
+            val recObj = node.jsonObject["mediaRecommendation"]?.jsonObject ?: continue
+            val id = recObj["id"]?.jsonPrimitive?.content ?: continue
+            val titleObj = recObj["title"]?.jsonObject
+            val englishTitle = titleObj?.get("english")?.jsonPrimitive?.content
+            val romajiTitle = titleObj?.get("romaji")?.jsonPrimitive?.content
+            val recTitle = englishTitle ?: romajiTitle ?: continue
 
-            // Titles
-            val titlesObj = obj["titles"]?.jsonArray
-            val titlesList = mutableListOf<String>()
-            var primaryTitle: String? = null
-            titlesObj?.forEach { tElem ->
-                val tObj = tElem.jsonObject
-                val tTitle = tObj["title"]?.jsonPrimitive?.content ?: ""
-                val isPrimary = tObj["is_primary"]?.jsonPrimitive?.content == "true"
-                val lang = tObj["language"]?.jsonPrimitive?.content ?: ""
-                if (isPrimary && (lang == "en" || primaryTitle == null)) {
-                    primaryTitle = tTitle
-                }
-                if (tTitle.isNotBlank()) {
-                    titlesList.add(tTitle)
-                }
-            }
-            val title = primaryTitle ?: titlesList.firstOrNull() ?: "Series #$id"
+            val altTitles = listOfNotNull(englishTitle, romajiTitle).distinct()
+            val synopsis = recObj["description"]?.jsonPrimitive?.content?.replace(Regex("<.*?>"), "")
+            val status = recObj["status"]?.jsonPrimitive?.content
+            val chapters = recObj["chapters"]?.jsonPrimitive?.intOrNull
+            val meanScore = recObj["meanScore"]?.jsonPrimitive?.doubleOrNull
+            val coverUrl = recObj["coverImage"]?.jsonObject?.get("large")?.jsonPrimitive?.content
+            val origin = recObj["countryOfOrigin"]?.jsonPrimitive?.content
 
-            // Cover
-            val coverObj = obj["cover"]?.jsonObject?.get("x250")?.jsonObject
-            val coverUrl = coverObj?.get("x1")?.jsonPrimitive?.content
-
-            // Synopsis
-            val synopsis = obj["description"]?.jsonPrimitive?.content
-
-            // Status
-            val status = obj["status"]?.jsonPrimitive?.content
-
-            // Chapters
-            val chapters = obj["total_chapters"]?.jsonPrimitive?.intOrNull
-
-            // Genres
-            val genres = obj["genres"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content } ?: emptyList()
-
-            // Tags
-            val tags = obj["tags"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content } ?: emptyList()
+            val genres = recObj["genres"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content } ?: emptyList()
+            val tags = recObj["tags"]?.jsonArray?.mapNotNull {
+                it.jsonObject["name"]?.jsonPrimitive?.content
+            } ?: emptyList()
 
             items.add(
                 CandidateManga(
                     id = id,
-                    title = title,
-                    alternativeTitles = titlesList,
+                    title = recTitle,
+                    alternativeTitles = altTitles,
                     coverUrl = coverUrl,
                     synopsis = synopsis,
                     status = status,
                     chapterCount = chapters,
-                    rating = rating,
+                    rating = meanScore,
                     genres = genres,
                     tags = tags,
-                    provider = "MangaBaka",
-                    externalUrl = "https://mangabaka.org/$id",
+                    provider = "AniList",
+                    externalUrl = "https://anilist.co/manga/$id",
+                    seedTitle = title,
+                    countryOfOrigin = origin,
                 ),
             )
         }
         return items
     }
 
-    private suspend fun fetchAniListTrending(): List<CandidateManga> {
+    suspend fun fetchAniListByGenres(genres: List<String>): List<CandidateManga> {
         val query = """
-            query {
-              Page(page: 1, perPage: 30) {
-                media(type: MANGA, sort: TRENDING_DESC, countryOfOrigin: "KR") {
+            query (${'$'}genres: [String]) {
+              Page(page: 1, perPage: 25) {
+                media(type: MANGA, genre_in: ${'$'}genres, sort: [SCORE_DESC, POPULARITY_DESC]) {
                   id
                   title {
                     english
@@ -194,6 +235,49 @@ class RecommendationMetadataApi(
                     name
                     rank
                   }
+                  countryOfOrigin
+                }
+              }
+            }
+        """.trimIndent()
+
+        val jsonBody = """{"query": ${Json.encodeToString(kotlinx.serialization.serializer(), query)}, "variables": {"genres": ${Json.encodeToString(kotlinx.serialization.serializer(), genres)}}}"""
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val request = POST("https://graphql.anilist.co", body = jsonBody.toRequestBody(mediaType))
+        val response = client.newCall(request).awaitSuccess()
+        val bodyString = response.body?.string() ?: return emptyList()
+
+        val parsed = json.parseToJsonElement(bodyString).jsonObject
+        val mediaArray = parsed["data"]?.jsonObject
+            ?.get("Page")?.jsonObject
+            ?.get("media")?.jsonArray ?: return emptyList()
+
+        return parseAniListMediaList(mediaArray)
+    }
+
+    private suspend fun fetchAniListTrending(): List<CandidateManga> {
+        val query = """
+            query {
+              Page(page: 1, perPage: 30) {
+                media(type: MANGA, sort: [TRENDING_DESC, SCORE_DESC]) {
+                  id
+                  title {
+                    english
+                    romaji
+                  }
+                  description
+                  status
+                  chapters
+                  meanScore
+                  coverImage {
+                    large
+                  }
+                  genres
+                  tags {
+                    name
+                    rank
+                  }
+                  countryOfOrigin
                 }
               }
             }
@@ -210,6 +294,10 @@ class RecommendationMetadataApi(
             ?.get("Page")?.jsonObject
             ?.get("media")?.jsonArray ?: return emptyList()
 
+        return parseAniListMediaList(mediaArray)
+    }
+
+    private fun parseAniListMediaList(mediaArray: JsonArray): List<CandidateManga> {
         val items = mutableListOf<CandidateManga>()
         for (elem in mediaArray) {
             val obj = elem.jsonObject
@@ -225,6 +313,7 @@ class RecommendationMetadataApi(
             val chapters = obj["chapters"]?.jsonPrimitive?.intOrNull
             val meanScore = obj["meanScore"]?.jsonPrimitive?.doubleOrNull
             val coverUrl = obj["coverImage"]?.jsonObject?.get("large")?.jsonPrimitive?.content
+            val origin = obj["countryOfOrigin"]?.jsonPrimitive?.content
 
             val genres = obj["genres"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content } ?: emptyList()
             val tags = obj["tags"]?.jsonArray?.mapNotNull {
@@ -245,6 +334,7 @@ class RecommendationMetadataApi(
                     tags = tags,
                     provider = "AniList",
                     externalUrl = "https://anilist.co/manga/$id",
+                    countryOfOrigin = origin,
                 ),
             )
         }

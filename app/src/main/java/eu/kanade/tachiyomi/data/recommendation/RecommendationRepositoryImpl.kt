@@ -35,7 +35,7 @@ class RecommendationRepositoryImpl(
         val keywords = taste.topTags.take(5)
 
         val candidates = try {
-            metadataApi.fetchCandidates(keywords, forceRefresh)
+            metadataApi.fetchCandidates(taste.topFavoriteTitles, keywords, forceRefresh)
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e) { "Failed to retrieve candidates" }
             emptyList()
@@ -49,8 +49,10 @@ class RecommendationRepositoryImpl(
             .map { scorer.score(it, taste) }
             .filterNot { rec ->
                 val normTitle = rec.title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+                val altNormTitles = rec.alternativeTitles.map { it.trim().lowercase().replace(Regex("[^a-z0-9]"), "") }
                 taste.dislikedMangaTitles.contains(normTitle) ||
-                    (taste.libraryMangaTitles.contains(normTitle) && rec.score < 0.90) // filter out already in library unless exceptionally high match
+                    taste.libraryMangaTitles.contains(normTitle) ||
+                    altNormTitles.any { taste.libraryMangaTitles.contains(it) }
             }
             .sortedByDescending { it.score }
             .take(60)

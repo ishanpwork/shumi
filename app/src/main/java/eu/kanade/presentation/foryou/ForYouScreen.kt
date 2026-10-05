@@ -80,8 +80,8 @@ fun ForYouScreen(
                         .fillMaxSize()
                         .padding(contentPadding),
                 ) {
-                    // Tag filter chips row
-                    if (state.availableTags.isNotEmpty()) {
+                    // Tag & Seed filter chips row
+                    if (state.availableSeeds.isNotEmpty() || state.availableTags.isNotEmpty()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -95,6 +95,14 @@ fun ForYouScreen(
                                 label = { Text("All") },
                                 colors = FilterChipDefaults.filterChipColors(),
                             )
+
+                            state.availableSeeds.forEach { seed ->
+                                FilterChip(
+                                    selected = state.selectedTagFilter == seed,
+                                    onClick = { onSelectTagFilter(seed) },
+                                    label = { Text("✨ $seed") },
+                                )
+                            }
 
                             state.availableTags.forEach { tag ->
                                 FilterChip(

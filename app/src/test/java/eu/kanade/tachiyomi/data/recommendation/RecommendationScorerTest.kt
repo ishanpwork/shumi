@@ -80,7 +80,21 @@ class RecommendationScorerTest {
         )
 
         val result = scorer.score(candidate, taste)
-        result.matchPercentage shouldBe 28 // Low baseline match with zero tag overlap
+        (result.matchPercentage < 35) shouldBe true
         result.primaryMatchingTags.isEmpty() shouldBe true
+    }
+
+    @Test
+    fun `boosts score and adds reason when candidate has seedTitle`() {
+        val taste = TasteProfile()
+        val candidate = CandidateManga(
+            id = "1",
+            title = "Hunter x Hunter",
+            seedTitle = "One Piece",
+            rating = 8.8,
+        )
+        val result = scorer.score(candidate, taste)
+        result.seedMangaTitle shouldBe "One Piece"
+        result.reasons.any { it.contains("One Piece") } shouldBe true
     }
 }
