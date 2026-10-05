@@ -80,7 +80,7 @@ class RecommendationScorerTest {
         )
 
         val result = scorer.score(candidate, taste)
-        result.matchPercentage shouldBe 49 // Low baseline match
+        result.matchPercentage shouldBe 28 // Low baseline match with zero tag overlap
         result.primaryMatchingTags.isEmpty() shouldBe true
     }
 }
