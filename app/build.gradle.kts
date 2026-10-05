@@ -35,10 +35,10 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.mihon.shumi"
+        applicationId = "app.mihon.shumiapp"
 
-        versionCode = 40
-        versionName = "0.22.3"
+        versionCode = 41
+        versionName = "0.22.4"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
