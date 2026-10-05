@@ -46,7 +46,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    val shumiKeystore = rootProject.file("shumi.keystore")
+    val shumiKeystore = file("shumi.keystore")
 
     signingConfigs {
         create("release") {
