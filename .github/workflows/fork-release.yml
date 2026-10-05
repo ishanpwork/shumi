@@ -35,7 +35,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build Standard & Arm64 APKs
-        run: ./gradlew assembleRelease -Pdist=ci
+        run: ./gradlew assembleRelease -Pdist=ci -Pinclude-telemetry=false -Penable-updater=true
 
       - name: Rename and Package APKs
         id: find_apks
