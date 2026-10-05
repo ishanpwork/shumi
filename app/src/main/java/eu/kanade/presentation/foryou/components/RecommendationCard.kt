@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import mihon.icons.materialsymbols.MaterialSymbols
-import mihon.icons.materialsymbols.rounded.Close
-import mihon.icons.materialsymbols.rounded.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -130,7 +128,7 @@ fun RecommendationCard(
                             .padding(start = 4.dp),
                     ) {
                         Icon(
-                            imageVector = MaterialSymbols.rounded.Close,
+                            imageVector = MaterialSymbols.Rounded.Close,
                             contentDescription = "Dismiss",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(16.dp),
@@ -161,7 +159,8 @@ fun RecommendationCard(
                             }
                         }
 
-                        if (recommendation.chapterCount != null && recommendation.chapterCount > 0) {
+                        val chapters = recommendation.chapterCount
+                        if (chapters != null && chapters > 0) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
@@ -169,7 +168,7 @@ fun RecommendationCard(
                                     .padding(horizontal = 6.dp, vertical = 2.dp),
                             ) {
                                 Text(
-                                    text = "${recommendation.chapterCount} ch",
+                                    text = "$chapters ch",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 10.sp,
                                 )
@@ -204,7 +203,7 @@ fun RecommendationCard(
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Icon(
-                            imageVector = MaterialSymbols.rounded.Search,
+                            imageVector = MaterialSymbols.Rounded.Search,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                         )

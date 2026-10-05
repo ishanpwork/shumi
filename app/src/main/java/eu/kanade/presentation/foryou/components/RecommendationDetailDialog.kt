@@ -18,8 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import mihon.icons.materialsymbols.MaterialSymbols
-import mihon.icons.materialsymbols.rounded.Close
-import mihon.icons.materialsymbols.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,7 +76,7 @@ fun RecommendationDetailDialog(
                         modifier = Modifier.size(28.dp),
                     ) {
                         Icon(
-                            imageVector = MaterialSymbols.rounded.Close,
+                            imageVector = MaterialSymbols.Rounded.Close,
                             contentDescription = "Close",
                             modifier = Modifier.size(20.dp),
                         )
@@ -251,7 +249,7 @@ fun RecommendationDetailDialog(
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Icon(
-                            imageVector = MaterialSymbols.rounded.Search,
+                            imageVector = MaterialSymbols.Rounded.Search,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
                         )
