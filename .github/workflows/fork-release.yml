@@ -48,12 +48,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          name: "Mihon For You ${{ github.event.inputs.tag_name || github.ref_name }}"
+          name: "Shumi ${{ github.event.inputs.tag_name || github.ref_name }}"
           body: |
-            ### Mihon Fork with Native "For You" Recommendation Engine
+            ### Shumi (趣味) — Mihon with Personalized Reading Taste Engine
             - Embedded "For You" tab powered by MangaBaka & AniList.
             - Reading taste learning directly from local Mihon database.
-            - Automatic in-app updates supported.
+            - Automatic in-app updates supported via ishanpwork/shumi.
           files: release_apks/*.apk
           draft: false
           prerelease: false
