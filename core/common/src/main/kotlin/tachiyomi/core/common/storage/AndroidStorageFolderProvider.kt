@@ -19,6 +19,10 @@ class AndroidStorageFolderProvider(
 ) : FolderProvider {
 
     override fun directory(): File {
+        val mihonDir = File(Environment.getExternalStorageDirectory(), "Mihon")
+        if (mihonDir.exists()) {
+            return mihonDir
+        }
         return File(
             Environment.getExternalStorageDirectory().absolutePath + File.separator +
                 context.stringResource(MR.strings.app_name),
