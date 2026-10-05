@@ -37,13 +37,26 @@ android {
     defaultConfig {
         applicationId = "app.mihon.shumi"
 
-        versionCode = 39
-        versionName = "0.22.2"
+        versionCode = 40
+        versionName = "0.22.3"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    val shumiKeystore = rootProject.file("shumi.keystore")
+
+    signingConfigs {
+        create("release") {
+            if (shumiKeystore.exists()) {
+                storeFile = shumiKeystore
+                storePassword = "shumipassword"
+                keyAlias = "shumi"
+                keyPassword = "shumipassword"
+            }
+        }
     }
 
     if (System.getenv("MIHON_GITHUB_RELEASE").toBoolean()) {
@@ -77,7 +90,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
 
-            signingConfig = debug.signingConfig
+            signingConfig = signingConfigs.getByName("release")
 
             isProfileable = true
 
