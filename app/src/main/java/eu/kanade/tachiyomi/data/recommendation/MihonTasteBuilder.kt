@@ -3,32 +3,35 @@ package eu.kanade.tachiyomi.data.recommendation
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.flow.firstOrNull
+import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.manga.interactor.GetLibraryManga
+import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.recommendation.model.TasteProfile
+import tachiyomi.domain.track.repository.TrackRepository
 import java.time.Instant
 
 @Inject
 @SingleIn(AppScope::class)
 class MihonTasteBuilder(
     private val getLibraryManga: GetLibraryManga,
+    private val mangaRepository: MangaRepository,
+    private val historyRepository: HistoryRepository,
+    private val trackRepository: TrackRepository,
 ) {
 
     suspend fun buildTasteProfile(): TasteProfile {
         val library = getLibraryManga.await()
-        if (library.isEmpty()) {
-            return TasteProfile()
-        }
-
         val tagWeights = mutableMapOf<String, Double>()
         val genreWeights = mutableMapOf<String, Double>()
         val authorWeights = mutableMapOf<String, Double>()
         val completedTitles = mutableSetOf<String>()
         val libraryTitles = mutableSetOf<String>()
 
+        // 1. Process Library Manga
         for (item in library) {
             val manga = item.manga
-            val normTitle = normalizeTitle(manga.title)
-            libraryTitles.add(normTitle)
+            libraryTitles.addAll(TitleNormalizer.extractVariants(manga.title))
 
             val total = item.totalChapters.coerceAtLeast(0)
             val read = item.readCount.coerceAtLeast(0)
@@ -56,7 +59,7 @@ class MihonTasteBuilder(
 
             // Mark as completed
             if (completionRatio >= 0.85 && total >= 5) {
-                completedTitles.add(normTitle)
+                completedTitles.addAll(TitleNormalizer.extractVariants(manga.title))
             }
 
             // Parse genres / tags
@@ -76,6 +79,38 @@ class MihonTasteBuilder(
                 }
             }
         }
+
+        // 2. Read manga not in library (e.g. read from Browse)
+        try {
+            val readNotInLibrary = mangaRepository.getReadMangaNotInLibrary()
+            for (manga in readNotInLibrary) {
+                libraryTitles.addAll(TitleNormalizer.extractVariants(manga.title))
+            }
+        } catch (_: Exception) {}
+
+        // 3. Favorites
+        try {
+            val favorites = mangaRepository.getFavorites()
+            for (manga in favorites) {
+                libraryTitles.addAll(TitleNormalizer.extractVariants(manga.title))
+            }
+        } catch (_: Exception) {}
+
+        // 4. Reading history
+        try {
+            val history = historyRepository.getHistory("").firstOrNull() ?: emptyList()
+            for (entry in history) {
+                libraryTitles.addAll(TitleNormalizer.extractVariants(entry.title))
+            }
+        } catch (_: Exception) {}
+
+        // 5. Tracked manga (AniList, MyAnimeList, Kitsu, etc.)
+        try {
+            val tracks = trackRepository.getTracksAsFlow().firstOrNull() ?: emptyList()
+            for (track in tracks) {
+                libraryTitles.addAll(TitleNormalizer.extractVariants(track.title))
+            }
+        } catch (_: Exception) {}
 
         // Normalize tag weights to [0.0 .. 1.0]
         val maxTagWeight = (tagWeights.values.maxOrNull() ?: 1.0).coerceAtLeast(1.0)
@@ -132,15 +167,7 @@ class MihonTasteBuilder(
         )
     }
 
-    private fun normalizeTitle(title: String): String {
-        return title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
-    }
-
     fun cleanTitleForSearch(title: String): String {
-        return title
-            .replace(Regex("\\[.*?\\]"), "")
-            .replace(Regex("\\(.*?\\)"), "")
-            .replace(Regex("(?i)(season\\s*\\d+|chapter\\s*\\d+|ch\\.\\s*\\d+|webtoon|manhwa|manga|official|color|hd)"), "")
-            .trim()
+        return TitleNormalizer.clean(title)
     }
 }

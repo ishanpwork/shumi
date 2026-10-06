@@ -162,6 +162,10 @@ fun ForYouScreen(
                 recommendation = selectedRec,
                 onDismissRequest = { onSelectRecommendation(null) },
                 onSearchInSources = { onSearchInSources(selectedRec) },
+                onMarkAsRead = {
+                    onDismissRecommendation(selectedRec)
+                    onSelectRecommendation(null)
+                },
             )
         }
     }

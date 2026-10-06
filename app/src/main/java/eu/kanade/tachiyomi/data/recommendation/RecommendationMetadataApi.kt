@@ -129,8 +129,9 @@ class RecommendationMetadataApi(
                 title {
                   english
                   romaji
+                  native
                 }
-                recommendations(sort: RATING_DESC, perPage: 8) {
+                recommendations(sort: RATING_DESC, perPage: 10) {
                   nodes {
                     rating
                     mediaRecommendation {
@@ -138,7 +139,9 @@ class RecommendationMetadataApi(
                       title {
                         english
                         romaji
+                        native
                       }
+                      synonyms
                       description
                       status
                       chapters
@@ -176,9 +179,11 @@ class RecommendationMetadataApi(
             val titleObj = recObj["title"]?.jsonObject
             val englishTitle = titleObj?.get("english")?.jsonPrimitive?.content
             val romajiTitle = titleObj?.get("romaji")?.jsonPrimitive?.content
-            val recTitle = englishTitle ?: romajiTitle ?: continue
+            val nativeTitle = titleObj?.get("native")?.jsonPrimitive?.content
+            val synonyms = recObj["synonyms"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content } ?: emptyList()
+            val recTitle = englishTitle ?: romajiTitle ?: nativeTitle ?: continue
 
-            val altTitles = listOfNotNull(englishTitle, romajiTitle).distinct()
+            val altTitles = (listOfNotNull(englishTitle, romajiTitle, nativeTitle) + synonyms).distinct()
             val synopsis = recObj["description"]?.jsonPrimitive?.content?.replace(Regex("<.*?>"), "")
             val status = recObj["status"]?.jsonPrimitive?.content
             val chapters = recObj["chapters"]?.jsonPrimitive?.intOrNull
@@ -222,7 +227,9 @@ class RecommendationMetadataApi(
                   title {
                     english
                     romaji
+                    native
                   }
+                  synonyms
                   description
                   status
                   chapters
@@ -264,7 +271,9 @@ class RecommendationMetadataApi(
                   title {
                     english
                     romaji
+                    native
                   }
+                  synonyms
                   description
                   status
                   chapters
@@ -305,9 +314,11 @@ class RecommendationMetadataApi(
             val titleObj = obj["title"]?.jsonObject
             val englishTitle = titleObj?.get("english")?.jsonPrimitive?.content
             val romajiTitle = titleObj?.get("romaji")?.jsonPrimitive?.content
-            val title = englishTitle ?: romajiTitle ?: continue
+            val nativeTitle = titleObj?.get("native")?.jsonPrimitive?.content
+            val synonyms = obj["synonyms"]?.jsonArray?.mapNotNull { it.jsonPrimitive.content } ?: emptyList()
+            val title = englishTitle ?: romajiTitle ?: nativeTitle ?: continue
 
-            val altTitles = listOfNotNull(englishTitle, romajiTitle).distinct()
+            val altTitles = (listOfNotNull(englishTitle, romajiTitle, nativeTitle) + synonyms).distinct()
             val synopsis = obj["description"]?.jsonPrimitive?.content?.replace(Regex("<.*?>"), "")
             val status = obj["status"]?.jsonPrimitive?.content
             val chapters = obj["chapters"]?.jsonPrimitive?.intOrNull

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Close
+import mihon.icons.materialsymbols.rounded.Done
 import mihon.icons.materialsymbols.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ fun RecommendationDetailDialog(
     recommendation: Recommendation,
     onDismissRequest: () -> Unit,
     onSearchInSources: () -> Unit,
+    onMarkAsRead: () -> Unit = {},
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Surface(
@@ -247,26 +249,38 @@ fun RecommendationDetailDialog(
                 // Actions
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = onDismissRequest) {
-                        Text("Close")
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = onSearchInSources,
-                        shape = RoundedCornerShape(8.dp),
-                    ) {
+                    TextButton(onClick = onMarkAsRead) {
                         Icon(
-                            imageVector = MaterialSymbols.Rounded.Search,
+                            imageVector = MaterialSymbols.Rounded.Done,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Search in Sources")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Already Read")
+                    }
+
+                    Row {
+                        TextButton(onClick = onDismissRequest) {
+                            Text("Close")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Button(
+                            onClick = onSearchInSources,
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Search in Sources")
+                        }
                     }
                 }
             }

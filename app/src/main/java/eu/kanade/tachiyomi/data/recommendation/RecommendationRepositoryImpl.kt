@@ -5,6 +5,7 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import logcat.LogPriority
+import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.recommendation.model.Recommendation
 import tachiyomi.domain.recommendation.model.TasteProfile
@@ -18,9 +19,13 @@ class RecommendationRepositoryImpl(
     private val tasteBuilder: MihonTasteBuilder,
     private val metadataApi: RecommendationMetadataApi,
     private val scorer: RecommendationScorer,
+    private val preferenceStore: PreferenceStore,
 ) : RecommendationRepository {
 
-    private val dismissedTitles = ConcurrentHashMap.newKeySet<String>()
+    private val dismissedTitlesPref = preferenceStore.getStringSet("foryou_dismissed_titles", emptySet())
+    private val dismissedTitles = ConcurrentHashMap.newKeySet<String>().apply {
+        addAll(dismissedTitlesPref.get())
+    }
     private val likedTitles = ConcurrentHashMap.newKeySet<String>()
 
     override suspend fun getTasteProfile(): TasteProfile {
@@ -48,23 +53,28 @@ class RecommendationRepositoryImpl(
         return candidates
             .map { scorer.score(it, taste) }
             .filterNot { rec ->
-                val normTitle = rec.title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
-                val altNormTitles = rec.alternativeTitles.map { it.trim().lowercase().replace(Regex("[^a-z0-9]"), "") }
-                taste.dislikedMangaTitles.contains(normTitle) ||
-                    taste.libraryMangaTitles.contains(normTitle) ||
-                    altNormTitles.any { taste.libraryMangaTitles.contains(it) }
+                val candVariants = mutableSetOf<String>()
+                candVariants.addAll(TitleNormalizer.extractVariants(rec.title))
+                for (alt in rec.alternativeTitles) {
+                    candVariants.addAll(TitleNormalizer.extractVariants(alt))
+                }
+
+                TitleNormalizer.isMatch(candVariants, taste.dislikedMangaTitles) ||
+                    TitleNormalizer.isMatch(candVariants, taste.libraryMangaTitles) ||
+                    TitleNormalizer.isMatch(candVariants, taste.completedMangaTitles)
             }
             .sortedByDescending { it.score }
             .take(60)
     }
 
     override suspend fun dismissRecommendation(title: String) {
-        val normTitle = title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
-        dismissedTitles.add(normTitle)
+        val variants = TitleNormalizer.extractVariants(title)
+        dismissedTitles.addAll(variants)
+        dismissedTitlesPref.set(dismissedTitles.toSet())
     }
 
     override suspend fun likeRecommendation(title: String) {
-        val normTitle = title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
-        likedTitles.add(normTitle)
+        val variants = TitleNormalizer.extractVariants(title)
+        likedTitles.addAll(variants)
     }
 }
